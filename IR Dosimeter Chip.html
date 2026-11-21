@@ -1,0 +1,406 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>IR Dosimeter Chip</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&family=Space+Grotesk:wght@500;600&display=swap">
+<style>
+/* Layout: title block, one large 3D stage with side labels, control row, then a top-to-bottom layer list that doubles as the legend. */
+:root{
+  --bg:#f2f5f9; --fg:#12202f; --mute:#566577; --line:#cdd5de; --panel:#ffffff;
+  --stage:#e4eaf2; --accent:#0b6bcb; --ctl:#ffffff; --ctl-on:#12202f; --ctl-on-fg:#ffffff;
+  --font-display:"Space Grotesk","Helvetica Neue",Arial,"Liberation Sans",sans-serif;
+  --font-body:"Inter","Helvetica Neue",Arial,"Liberation Sans",sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0a1120; --fg:#e8eef6; --mute:#93a3b8; --line:#25344a; --panel:#101a2d;
+    --stage:#0d192c; --accent:#5aa7ff; --ctl:#14203a; --ctl-on:#e8eef6; --ctl-on-fg:#0a1120;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0a1120; --fg:#e8eef6; --mute:#93a3b8; --line:#25344a; --panel:#101a2d;
+  --stage:#0d192c; --accent:#5aa7ff; --ctl:#14203a; --ctl-on:#e8eef6; --ctl-on-fg:#0a1120;
+  color-scheme:dark;
+}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--font-body);font-size:15px;line-height:1.5;
+  padding-block:24px 40px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:1100px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+h1{font:600 clamp(26px,4vw,38px)/1.1 var(--font-display);margin:0;letter-spacing:-.01em;text-wrap:balance}
+.lede{margin:6px 0 0;color:var(--mute);max-width:68ch}
+.stage{position:relative;height:clamp(380px,68vh,660px);background:var(--stage);border-radius:14px;overflow:hidden;border:1px solid var(--line)}
+#gl{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:grab;touch-action:pan-y}
+#gl:active{cursor:grabbing}
+#leaders{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+#leaders line{stroke:var(--mute);stroke-width:1}
+#leaders circle{fill:var(--fg)}
+#labels{position:absolute;inset:0;pointer-events:none}
+.lbl{position:absolute;width:224px;transform:translateY(-50%);font-size:12.5px;line-height:1.25;color:var(--mute)}
+.lbl b{display:block;font:600 13.5px/1.2 var(--font-display);color:var(--fg);margin-bottom:1px}
+.nogl-msg{display:none;position:absolute;inset:0;align-items:center;justify-content:center;text-align:center;padding:24px;color:var(--mute)}
+.stage.nogl .nogl-msg{display:flex}
+.controls{display:flex;flex-wrap:wrap;gap:12px 22px;align-items:center}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{font:500 14px var(--font-body);padding:8px 14px;border:0;background:var(--ctl);color:var(--fg);cursor:pointer}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed="true"]{background:var(--ctl-on);color:var(--ctl-on-fg)}
+button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.rng,.chk{display:inline-flex;align-items:center;gap:8px;font-size:14px;color:var(--fg)}
+.rng input{width:160px;accent-color:var(--accent)}
+.chk input{accent-color:var(--accent);width:16px;height:16px}
+.hint{color:var(--mute);font-size:13px;margin-left:auto}
+.layers{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px 22px}
+.layers li{display:grid;grid-template-columns:6px 1fr;gap:12px;min-width:0}
+.layers i{border-radius:3px;background:var(--c)}
+.layers h2{font:600 15px/1.25 var(--font-display);margin:0 0 2px}
+.layers p{margin:0;color:var(--mute);font-size:13.5px}
+.note{color:var(--mute);font-size:13px;margin:0}
+
+/* Render mode used to export poster images */
+body.shot{padding:0}
+body.shot .wrap{max-width:none;gap:0}
+body.shot header,body.shot .controls,body.shot .layers,body.shot .note{display:none}
+body.shot .stage{height:100vh;border:0;border-radius:0}
+body.shot.clear{background:transparent}
+body.shot.clear .stage{background:transparent}
+@media (max-width:719px){ .hint{margin-left:0} }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>IR Dosimeter Chip</h1>
+    <p class="lede">Concept model of the detector built in this project. X-rays hit a pressed organic pellet, the pellet emits infrared light, a silicon PIN photodiode senses it, and a readout circuit outputs a frequency. Drag to rotate.</p>
+  </header>
+
+  <div class="stage" id="stage">
+    <canvas id="gl" aria-label="3D model of the dosimeter chip"></canvas>
+    <svg id="leaders" aria-hidden="true"></svg>
+    <div id="labels"></div>
+    <div class="nogl-msg">This browser could not start WebGL, so the 3D model cannot be shown here.</div>
+  </div>
+
+  <div class="controls">
+    <div class="seg" role="group" aria-label="View">
+      <button id="bAsm" type="button" aria-pressed="false">Assembled</button>
+      <button id="bExp" type="button" aria-pressed="true">Exploded</button>
+    </div>
+    <label class="rng" for="rng">Explode <input id="rng" type="range" min="0" max="100" value="100"></label>
+    <label class="chk" for="chkLab"><input id="chkLab" type="checkbox" checked> Labels</label>
+    <label class="chk" for="chkRot"><input id="chkRot" type="checkbox"> Auto-rotate</label>
+    <span class="hint">Drag the model to rotate</span>
+  </div>
+
+  <ol class="layers">
+    <li style="--c:#8b5cf6"><i></i><div><h2>X-ray photons</h2><p>The ionizing radiation to be measured enters from the top.</p></div></li>
+    <li style="--c:#3a404c"><i></i><div><h2>Light-tight cover and window</h2><p>Keeps ambient light out and lets the X-rays reach the pellet.</p></div></li>
+    <li style="--c:#e0832d"><i></i><div><h2>IR-emitting organic pellet</h2><p>Pressed organic converter powder. Under X-rays it emits infrared light (radioluminescence).</p></div></li>
+    <li style="--c:#1d2f55"><i></i><div><h2>Si PIN photodiode</h2><p>Turns the infrared light into a photocurrent. Response 400 to 1100 nm, peak sensitivity at 940 nm.</p></div></li>
+    <li style="--c:#1f7a4a"><i></i><div><h2>Readout circuit and pins</h2><p>Translates the detector signal into a frequency output (Hz) that the pins carry out.</p></div></li>
+  </ol>
+  <p class="note">Concept illustration, not to scale. Layer order and materials follow the experimental setup described in the dissertation.</p>
+</div>
+
+<script>
+(function(){
+  var $ = function(s){ return document.querySelector(s); };
+  var canvas = $('#gl'), stage = $('#stage'), labBox = $('#labels'), svg = $('#leaders');
+  var gl = null;
+  try { gl = canvas.getContext('webgl', {antialias:true, alpha:true, premultipliedAlpha:false, preserveDrawingBuffer:true}); } catch(err){ gl = null; }
+  if(!gl){ stage.classList.add('nogl'); return; }
+
+  /* ---------- shaders ---------- */
+  var VS = 'attribute vec3 a_pos;attribute vec3 a_nor;uniform mat4 u_proj;uniform mat3 u_rot;uniform vec3 u_off;uniform vec3 u_ctr;uniform float u_dist;varying vec3 v_n;' +
+    'void main(){vec3 p=a_pos+u_off-u_ctr;vec3 pv=u_rot*p+vec3(0.,0.,-u_dist);v_n=u_rot*a_nor;gl_Position=u_proj*vec4(pv,1.);}';
+  var FS = 'precision mediump float;varying vec3 v_n;uniform vec3 u_col;uniform float u_alpha,u_emis,u_spec,u_shin;' +
+    'void main(){vec3 n=normalize(v_n);vec3 L1=normalize(vec3(-0.45,0.75,0.55));vec3 L2=normalize(vec3(0.7,0.15,0.45));' +
+    'float d1=max(dot(n,L1),0.);float d2=max(dot(n,L2),0.);float hemi=0.5+0.5*n.y;' +
+    'vec3 H=normalize(L1+vec3(0.,0.,1.));float sp=pow(max(dot(n,H),0.),u_shin)*u_spec;' +
+    'vec3 c=u_col*(0.26+0.2*hemi+0.55*d1+0.22*d2)+vec3(sp)+u_col*u_emis;' +
+    'c+=pow(1.-max(n.z,0.),3.)*0.08;gl_FragColor=vec4(min(c,vec3(1.)),u_alpha);}';
+  function sh(t, src){ var o = gl.createShader(t); gl.shaderSource(o, src); gl.compileShader(o); return o; }
+  var prog = gl.createProgram();
+  gl.attachShader(prog, sh(gl.VERTEX_SHADER, VS)); gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, FS));
+  gl.linkProgram(prog); gl.useProgram(prog);
+  var loc = {}; ['u_proj','u_rot','u_off','u_ctr','u_dist','u_col','u_alpha','u_emis','u_spec','u_shin'].forEach(function(n){ loc[n] = gl.getUniformLocation(prog, n); });
+  var aPos = gl.getAttribLocation(prog, 'a_pos'), aNor = gl.getAttribLocation(prog, 'a_nor');
+  gl.enableVertexAttribArray(aPos); gl.enableVertexAttribArray(aNor);
+  gl.enable(gl.DEPTH_TEST); gl.enable(gl.BLEND);
+  gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+
+  /* ---------- geometry helpers (interleaved position + normal) ---------- */
+  function push(m, p, n){ m.v.push(p[0],p[1],p[2],n[0],n[1],n[2]); }
+  function quad(m, a,b,c,d, n){ [a,b,c,a,c,d].forEach(function(p){ push(m,p,n); }); }
+  function box(m, cx,cy,cz, sx,sy,sz){
+    var x0=cx-sx/2,x1=cx+sx/2,y0=cy-sy/2,y1=cy+sy/2,z0=cz-sz/2,z1=cz+sz/2;
+    quad(m,[x0,y1,z0],[x0,y1,z1],[x1,y1,z1],[x1,y1,z0],[0,1,0]);
+    quad(m,[x0,y0,z0],[x1,y0,z0],[x1,y0,z1],[x0,y0,z1],[0,-1,0]);
+    quad(m,[x0,y0,z1],[x1,y0,z1],[x1,y1,z1],[x0,y1,z1],[0,0,1]);
+    quad(m,[x1,y0,z0],[x0,y0,z0],[x0,y1,z0],[x1,y1,z0],[0,0,-1]);
+    quad(m,[x1,y0,z1],[x1,y0,z0],[x1,y1,z0],[x1,y1,z1],[1,0,0]);
+    quad(m,[x0,y0,z0],[x0,y0,z1],[x0,y1,z1],[x0,y1,z0],[-1,0,0]);
+  }
+  function cyl(m, cx,cy,cz, r,h, seg){
+    seg = seg || 48;
+    for(var i=0;i<seg;i++){
+      var a0=i/seg*Math.PI*2, a1=(i+1)/seg*Math.PI*2, c0=Math.cos(a0), s0=Math.sin(a0), c1=Math.cos(a1), s1=Math.sin(a1);
+      var y0=cy-h/2, y1=cy+h/2;
+      var p00=[cx+r*c0,y0,cz+r*s0], p01=[cx+r*c0,y1,cz+r*s0], p10=[cx+r*c1,y0,cz+r*s1], p11=[cx+r*c1,y1,cz+r*s1];
+      var n0=[c0,0,s0], n1=[c1,0,s1];
+      push(m,p00,n0);push(m,p01,n0);push(m,p11,n1);push(m,p00,n0);push(m,p11,n1);push(m,p10,n1);
+      push(m,[cx,y1,cz],[0,1,0]);push(m,p11,[0,1,0]);push(m,p01,[0,1,0]);
+      push(m,[cx,y0,cz],[0,-1,0]);push(m,p00,[0,-1,0]);push(m,p10,[0,-1,0]);
+    }
+  }
+  /* arrow pointing down: tip at (cx,cy,cz), head height hh, shaft length len above it */
+  function arrow(m, cx,cy,cz, hr,hh, sr,len){
+    var seg=20;
+    for(var i=0;i<seg;i++){
+      var a0=i/seg*Math.PI*2, a1=(i+1)/seg*Math.PI*2, c0=Math.cos(a0), s0=Math.sin(a0), c1=Math.cos(a1), s1=Math.sin(a1);
+      var L=Math.sqrt(hh*hh+hr*hr);
+      var n0=[c0*hh/L,-hr/L,s0*hh/L], n1=[c1*hh/L,-hr/L,s1*hh/L];
+      push(m,[cx,cy,cz],n0);push(m,[cx+hr*c0,cy+hh,cz+hr*s0],n0);push(m,[cx+hr*c1,cy+hh,cz+hr*s1],n1);
+      push(m,[cx,cy+hh,cz],[0,1,0]);push(m,[cx+hr*c1,cy+hh,cz+hr*s1],[0,1,0]);push(m,[cx+hr*c0,cy+hh,cz+hr*s0],[0,1,0]);
+    }
+    cyl(m, cx, cy+hh+len/2, cz, sr, len, 14);
+  }
+
+  /* ---------- scene ---------- */
+  function rgb(h){ return [parseInt(h.substr(1,2),16)/255, parseInt(h.substr(3,2),16)/255, parseInt(h.substr(5,2),16)/255]; }
+  var G = {};
+  function group(name, ex){ G[name] = {name:name, ex:ex, parts:[]}; return G[name]; }
+  function add(g, build, hex, o){
+    var m = {v:[]}; build(m);
+    var buf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, buf); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(m.v), gl.STATIC_DRAW);
+    var p = {buf:buf, n:m.v.length/6, col:rgb(hex), spec:0.15, shin:30, emis:0, alpha:1, fade:null};
+    for(var k in (o||{})) p[k] = o[k];
+    g.parts.push(p);
+  }
+  function smooth(a,b,x){ var t = Math.max(0, Math.min(1, (x-a)/(b-a))); return t*t*(3-2*t); }
+
+  /* PCB with readout components and output pins (stays at the bottom) */
+  var pcb = group('pcb', 0);
+  add(pcb, function(m){ box(m,0,0,0, 4.4,0.16,4.4); }, '#1f7a4a', {spec:0.25, shin:25});
+  add(pcb, function(m){ box(m,0,0.18,1.6, 1.6,0.2,0.8); box(m,0,0.16,-1.6, 1.0,0.16,0.6); }, '#12151b', {spec:0.35, shin:40});
+  add(pcb, function(m){ cyl(m,-0.62,0.285,1.9,0.07,0.02,16); }, '#9aa3b2', {});
+  add(pcb, function(m){
+    [[1.7,0.3],[1.7,-0.3],[-1.7,0.3],[-1.7,-0.3],[1.7,0.95],[-1.7,0.95],[1.7,-0.95],[-1.7,-0.95]].forEach(function(p){ box(m,p[0],0.13,p[1],0.22,0.1,0.36); });
+  }, '#cdbb9b', {spec:0.3});
+  add(pcb, function(m){
+    var zs=[-1.2,-0.6,0,0.6,1.2];
+    zs.forEach(function(z){
+      [1,-1].forEach(function(s){
+        box(m, s*2.0, 0.088, z, 0.4, 0.014, 0.2);             /* pad */
+        box(m, s*1.85, 0.088, z, 0.7, 0.012, 0.05);            /* trace to bus */
+        box(m, s*2.45, 0.0, z, 0.55, 0.06, 0.2);               /* lead out */
+        box(m, s*2.7, -0.15, z, 0.06, 0.36, 0.2);              /* lead down */
+      });
+    });
+    box(m, 1.7, 0.088, 0.0, 0.05, 0.012, 3.2); box(m, -1.7, 0.088, 0.0, 0.05, 0.012, 3.2);
+    box(m, 1.25, 0.088, 1.6, 0.9, 0.012, 0.05); box(m,-1.25,0.088,1.6,0.9,0.012,0.05);
+    box(m, 1.2, 0.088, -1.6, 0.9, 0.012, 0.05); box(m,-1.2,0.088,-1.6,0.9,0.012,0.05);
+  }, '#d8b24a', {spec:0.6, shin:50});
+
+  /* Photocurrent arrows between photodiode and board */
+  var sig = group('sig', 0.625);
+  [-0.8,0,0.8].forEach(function(x){
+    add(sig, function(m){ arrow(m, x, -0.27, 0.95, 0.11, 0.2, 0.035, 0.5); }, '#3aa0ff', {emis:0.5, fade:function(e){ return 0.95*smooth(0.15,0.6,e); }});
+  });
+
+  /* Si PIN photodiode */
+  var die = group('die', 1.25);
+  add(die, function(m){ box(m,0,0.14,0, 2.4,0.12,2.4); }, '#1d2f55', {spec:0.5, shin:40});
+  add(die, function(m){ cyl(m,0,0.206,0, 0.95,0.012,56); }, '#0a1226', {spec:0.9, shin:90});
+  add(die, function(m){
+    [-0.6,-0.3,0,0.3,0.6].forEach(function(z){ box(m,0,0.215,z, 2*Math.sqrt(0.95*0.95-z*z)*0.96, 0.008, 0.04); });
+    box(m,0.0,0.215,0,0.05,0.008,1.7);
+    box(m,1.0,0.212,1.0,0.3,0.014,0.3);
+  }, '#d8b24a', {spec:0.7, shin:60});
+
+  /* Infrared emission arrows between pellet and photodiode */
+  var ir = group('ir', 1.95);
+  (function(){
+    var pts=[[0,0]]; for(var i=0;i<6;i++){ var a=i/6*Math.PI*2+0.3; pts.push([0.75*Math.cos(a), 0.75*Math.sin(a)]); }
+    pts.forEach(function(p){
+      add(ir, function(m){ arrow(m, p[0], -0.25, p[1], 0.1, 0.18, 0.03, 0.72); }, '#ff4b3a', {emis:0.7, fade:function(e){ return 0.95*smooth(0.15,0.6,e); }});
+    });
+  })();
+
+  /* IR-emitting pellet */
+  var pel = group('pellet', 2.65);
+  add(pel, function(m){ cyl(m,0,0.35,0, 1.1,0.3,64); }, '#d9782a', {spec:0.12, shin:18, emis:0.22});
+  add(pel, function(m){ cyl(m,0,0.503,0, 0.98,0.006,64); }, '#ffae5a', {emis:0.55, spec:0.05});
+
+  /* Light-tight cover with entrance window */
+  var cov = group('cover', 4.6);
+  add(cov, function(m){
+    box(m,0,0.67,1.55, 4.4,0.34,1.3); box(m,0,0.67,-1.55, 4.4,0.34,1.3);
+    box(m,1.55,0.67,0, 1.3,0.34,1.8); box(m,-1.55,0.67,0, 1.3,0.34,1.8);
+  }, '#14171e', {spec:0.4, shin:35});
+  add(cov, function(m){
+    box(m,0,0.29,2.14, 4.4,0.42,0.12); box(m,0,0.29,-2.14, 4.4,0.42,0.12);
+    box(m,2.14,0.29,0, 0.12,0.42,4.16); box(m,-2.14,0.29,0, 0.12,0.42,4.16);
+  }, '#2b303b', {spec:0.25, shin:30});
+  add(cov, function(m){ cyl(m,-1.85,0.842,1.85,0.11,0.01,20); }, '#8a93a3', {});
+  add(cov, function(m){ box(m,0,0.69,0, 1.8,0.05,1.8); }, '#8cc0ff', {alpha:0.3, spec:0.8, shin:70});
+
+  /* X-ray photons */
+  var xr = group('xray', 5.1);
+  [[0,0],[0.55,0.45],[-0.55,0.45],[0.55,-0.45],[-0.55,-0.45]].forEach(function(p){
+    add(xr, function(m){ arrow(m, p[0], 1.0, p[1], 0.14, 0.3, 0.045, 0.9); }, '#9b6dff', {emis:0.55, alpha:0.95});
+  });
+
+  /* ---------- labels (anchor points are local to a group) ---------- */
+  var LABELS = [
+    {g:'xray',   a:[0.55,1.85,0.45],  t:'X-ray photons',                s:'Radiation to be measured',          vis:function(e){return 1;}},
+    {g:'cover',  a:[2.2,0.67,-0.5],   t:'Light-tight cover and window', s:'Opens to the pellet',               vis:function(e){return 1;}},
+    {g:'pellet', a:[1.1,0.35,-0.3],   t:'IR-emitting organic pellet',   s:'Pressed converter powder',          vis:function(e){return smooth(0.3,0.7,e);}},
+    {g:'ir',     a:[0.75,0.25,-0.1],  t:'Infrared light',               s:'Radioluminescence',                 vis:function(e){return smooth(0.3,0.7,e);}},
+    {g:'die',    a:[1.2,0.14,-0.4],   t:'Si PIN photodiode',            s:'Peak sensitivity 940 nm',           vis:function(e){return smooth(0.3,0.7,e);}},
+    {g:'sig',    a:[0.8,0.08,0.95],   t:'Photocurrent',                 s:'Detector signal',                   vis:function(e){return smooth(0.3,0.7,e);}},
+    {g:'pcb',    a:[2.2,0.05,-1.2],   t:'Readout circuit',              s:'Frequency output in Hz',            vis:function(e){return smooth(0.3,0.7,e);}},
+    {g:'pcb',    a:[2.7,-0.1,0.6],    t:'Output pins',                  s:'',                                  vis:function(e){return 1;}}
+  ];
+  LABELS.forEach(function(L){
+    var d = document.createElement('div'); d.className='lbl';
+    d.innerHTML = '<b></b>' + (L.s ? '<span></span>' : '');
+    d.firstChild.textContent = L.t; if(L.s) d.lastChild.textContent = L.s;
+    labBox.appendChild(d); L.el = d;
+    L.ln = document.createElementNS('http://www.w3.org/2000/svg','line'); L.dot = document.createElementNS('http://www.w3.org/2000/svg','circle');
+    L.dot.setAttribute('r','3'); svg.appendChild(L.ln); svg.appendChild(L.dot);
+  });
+
+  /* ---------- state ---------- */
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var S = {e:1, eT:1, yaw:-0.62, pitch:0.4, labels:true, auto:!reduce, drag:false, shift:true};
+  var W = 0, H = 0, dpr = 1, FOV = 0.5;
+  function lerp(a,b,t){ return a+(b-a)*t; }
+
+  function rotMat(){
+    var c=Math.cos(S.yaw), s=Math.sin(S.yaw), cp=Math.cos(S.pitch), sp=Math.sin(S.pitch);
+    /* rows: [c,0,s],[sp*s,cp,-sp*c],[-cp*s,sp,cp*c]  -> column-major */
+    return [c, sp*s, -cp*s,  0, cp, sp,  s, -sp*c, cp*c];
+  }
+  function projMat(shiftNdc){
+    var f = 1/Math.tan(FOV/2), a = W/H, n=0.5, fa=200;
+    return [f/a,0,0,0, 0,f,0,0, -shiftNdc,0,(fa+n)/(n-fa),-1, 0,0,2*fa*n/(n-fa),0];
+  }
+  function resize(){
+    dpr = Math.min(window.devicePixelRatio || 1, 3);
+    W = stage.clientWidth; H = stage.clientHeight;
+    var cw = Math.round(W*dpr), ch = Math.round(H*dpr);
+    if(canvas.width !== cw || canvas.height !== ch){ canvas.width = cw; canvas.height = ch; }
+    svg.setAttribute('viewBox','0 0 '+W+' '+H);
+  }
+
+  function frame(){
+    resize();
+    if(W < 2 || H < 2) return;
+    var e = S.e, rot = rotMat();
+    var cy = lerp(0.95, 3.45, e), R = lerp(3.6, 5.0, e);
+    var asp = W/H, wide = W >= 720, showLab = S.labels && wide;
+    var dist = R/(Math.tan(FOV/2)*Math.min(1,asp))*1.06;
+    var shiftNdc = (showLab && S.shift) ? -0.2 : 0;
+    var P = projMat(shiftNdc);
+    gl.viewport(0,0,canvas.width,canvas.height);
+    gl.clearColor(0,0,0,0); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    gl.uniformMatrix4fv(loc.u_proj, false, new Float32Array(P));
+    gl.uniformMatrix3fv(loc.u_rot, false, new Float32Array(rot));
+    gl.uniform3f(loc.u_ctr, 0, cy, 0);
+    gl.uniform1f(loc.u_dist, dist);
+
+    function drawPass(trans){
+      gl.depthMask(!trans);
+      for(var k in G){
+        var g = G[k];
+        gl.uniform3f(loc.u_off, 0, g.ex*e, 0);
+        g.parts.forEach(function(p){
+          var a = p.fade ? p.fade(e) : p.alpha;
+          var isT = a < 0.999;
+          if(isT !== trans || a < 0.02) return;
+          gl.bindBuffer(gl.ARRAY_BUFFER, p.buf);
+          gl.vertexAttribPointer(aPos,3,gl.FLOAT,false,24,0); gl.vertexAttribPointer(aNor,3,gl.FLOAT,false,24,12);
+          gl.uniform3f(loc.u_col, p.col[0],p.col[1],p.col[2]);
+          gl.uniform1f(loc.u_alpha, a); gl.uniform1f(loc.u_emis, p.emis); gl.uniform1f(loc.u_spec, p.spec); gl.uniform1f(loc.u_shin, p.shin);
+          gl.drawArrays(gl.TRIANGLES, 0, p.n);
+        });
+      }
+    }
+    drawPass(false); drawPass(true); gl.depthMask(true);
+
+    /* project anchors for labels */
+    function project(p){
+      var x=p[0], y=p[1]-cy, z=p[2];
+      var vx = rot[0]*x + rot[3]*y + rot[6]*z, vy = rot[1]*x + rot[4]*y + rot[7]*z, vz = rot[2]*x + rot[5]*y + rot[8]*z - dist;
+      var cx = P[0]*vx + P[8]*vz, cyy = P[5]*vy, cw = -vz;
+      return [(cx/cw*0.5+0.5)*W, (1-(cyy/cw*0.5+0.5))*H];
+    }
+    var items = [];
+    LABELS.forEach(function(L){
+      var g = G[L.g], v = showLab ? L.vis(e) : 0;
+      var pt = project([L.a[0], L.a[1] + g.ex*e, L.a[2]]);
+      L.ax = pt[0]; L.ay = pt[1]; L.v = v;
+      if(v > 0.02) items.push(L);
+    });
+    items.sort(function(a,b){ return a.ay-b.ay; });
+    var gap = 42, prev = 22, colX = W - 16 - 224;
+    items.forEach(function(L){ L.ly = Math.max(L.ay, prev); prev = L.ly + gap; });
+    var over = prev - gap - (H - 24);
+    if(over > 0){ items.forEach(function(L){ L.ly -= over; }); }
+    LABELS.forEach(function(L){
+      var on = L.v > 0.02;
+      L.el.style.opacity = on ? L.v : 0; L.ln.style.opacity = on ? L.v : 0; L.dot.style.opacity = on ? L.v : 0;
+      if(!on) return;
+      L.el.style.left = colX+'px'; L.el.style.top = L.ly+'px';
+      L.ln.setAttribute('x1',L.ax); L.ln.setAttribute('y1',L.ay); L.ln.setAttribute('x2',colX-8); L.ln.setAttribute('y2',L.ly);
+      L.dot.setAttribute('cx',L.ax); L.dot.setAttribute('cy',L.ay);
+    });
+  }
+
+  /* ---------- interaction ---------- */
+  var lx = 0, ly = 0;
+  canvas.addEventListener('pointerdown', function(ev){ S.drag = true; lx = ev.clientX; ly = ev.clientY; try{ canvas.setPointerCapture(ev.pointerId); }catch(x){} });
+  canvas.addEventListener('pointermove', function(ev){
+    if(!S.drag) return;
+    S.yaw += (ev.clientX-lx)*0.008;
+    if(ev.pointerType !== 'touch') S.pitch = Math.max(-0.5, Math.min(1.5, S.pitch + (ev.clientY-ly)*0.006));
+    lx = ev.clientX; ly = ev.clientY;
+  });
+  function endDrag(){ S.drag = false; }
+  canvas.addEventListener('pointerup', endDrag); canvas.addEventListener('pointercancel', endDrag);
+
+  var bA = $('#bAsm'), bE = $('#bExp'), rng = $('#rng'), cL = $('#chkLab'), cR = $('#chkRot');
+  function syncButtons(){
+    bA.setAttribute('aria-pressed', S.eT < 0.5 ? 'true' : 'false'); bE.setAttribute('aria-pressed', S.eT >= 0.5 ? 'true' : 'false');
+    rng.value = Math.round(S.eT*100);
+  }
+  bA.addEventListener('click', function(){ S.eT = 0; syncButtons(); });
+  bE.addEventListener('click', function(){ S.eT = 1; syncButtons(); });
+  rng.addEventListener('input', function(){ S.eT = S.e = rng.value/100; syncButtons(); });
+  cL.addEventListener('change', function(){ S.labels = cL.checked; });
+  cR.checked = S.auto; cR.addEventListener('change', function(){ S.auto = cR.checked; });
+
+  function loop(){
+    S.e += (S.eT - S.e)*0.12; if(Math.abs(S.eT-S.e) < 0.0005) S.e = S.eT;
+    if(S.auto && !S.drag) S.yaw += 0.004;
+    frame(); requestAnimationFrame(loop);
+  }
+  loop();
+
+  /* Hook used to export poster images */
+  window.chipApi = {
+    set: function(o){
+      if('e' in o){ S.e = S.eT = o.e; }
+      if('yaw' in o) S.yaw = o.yaw;
+      if('pitch' in o) S.pitch = o.pitch;
+      if('labels' in o) S.labels = o.labels;
+      if('auto' in o) S.auto = o.auto;
+      if('shift' in o) S.shift = o.shift;
+      if(o.shot){ document.body.classList.add('shot'); }
+      if(o.clear){ document.body.classList.add('clear'); } else if('clear' in o){ document.body.classList.remove('clear'); }
+      if(o.theme){ document.documentElement.setAttribute('data-theme', o.theme); }
+      syncButtons(); frame();
+    }
+  };
+})();
+</script>
+
+</body></html>
